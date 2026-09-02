@@ -6,6 +6,11 @@ import duckdb
 from minsearch import Index
 import os
 
+from pathlib import Path
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+
+
 def build_index(chunks):
     index = Index(
         text_fields=['title', 'content'],
@@ -16,23 +21,23 @@ def build_index(chunks):
 
 
 def run_ingestion_pipeline():
-    with open("data/wiki_titles.txt") as f:
+    with open(DATA_DIR/"wiki_titles.txt") as f:
         titles = [line.strip() for line in f if line.strip()]
 
     pipeline = dlt.pipeline(
     pipeline_name="coffee",
     dataset_name="chunks",
-    destination=dlt.destinations.duckdb(credentials="data/coffee.duckdb")
+    destination=dlt.destinations.duckdb(credentials=DATA_DIR/"coffee.duckdb")
     )
 
     info = pipeline.run(fetch_articles(titles),write_disposition="replace")
 
 
 def load_index():
-    if not os.path.exists('data/coffee.duckdb'):
+    if not os.path.exists(DATA_DIR/'coffee.duckdb'):
         run_ingestion_pipeline()
 
-    with duckdb.connect('data/coffee.duckdb') as con:
+    with duckdb.connect(DATA_DIR/'coffee.duckdb') as con:
         chunks = con.execute('select doc_id, chunk_id, title, content from chunks.chunks').df().to_dict('records')
 
     return build_index(chunks)

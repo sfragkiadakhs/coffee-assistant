@@ -5,9 +5,17 @@ from coffee_assistant import ingest
 
 load_dotenv()
 client = OpenAI()
-index = ingest.load_index()
 
-def search(query):
+_index = None
+
+def get_index():
+    global _index
+    if _index is None:
+        _index = ingest.load_index()
+    return _index
+
+
+def search(query, index):
     boost = {}
 
     results = index.search(
@@ -67,7 +75,8 @@ def llm(prompt, model="gpt-4o-mini"):
 
 
 def rag(query, model="gpt-4o-mini"):
-    search_results = search(query)
+    index = get_index()
+    search_results = search(query, index)
     prompt = build_prompt(query, search_results)
     answer, token_stats = llm(prompt, model=model)
 
