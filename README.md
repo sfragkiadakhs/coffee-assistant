@@ -37,6 +37,12 @@ from coffee_assistant.rag import rag
 rag("What regions produce Arabica coffee?")
 ```
 
+## Ground truth
+
+`notebooks/eval.ipynb` generates 5 synthetic user questions per chunk with
+`gpt-4o-mini`, keyed by `chunk_id`, saved to `data/ground-truth-retrieval.csv`
+(504 chunks, 2520 questions) — used for the retrieval/LLM evaluation steps.
+
 ## Project structure
 
 - `coffee_assistant/ingest.py` — fetches Wikipedia articles, chunks them, loads them
@@ -44,9 +50,10 @@ rag("What regions produce Arabica coffee?")
 - `coffee_assistant/rag.py` — retrieval, prompt building, and the LLM call.
 - `streamlit_app.py` — Streamlit UI: a question box that calls `rag()` and displays
   the answer with token usage.
-- `notebooks/` — exploratory notebooks used during development.
-- `data/` — source titles list; the generated DuckDB file is gitignored and rebuilt
-  on first run.
+- `notebooks/eval.ipynb` — generates the ground-truth question set used for
+  retrieval/LLM evaluation.
+- `data/` — source titles list and ground-truth CSV; the generated DuckDB file is
+  gitignored and rebuilt on first run.
 
 This README will be expanded with architecture, evaluation, and monitoring sections
 as the project progresses.

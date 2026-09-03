@@ -10,12 +10,14 @@ user_input = st.text_input("Enter your question:")
 
 
 if st.button("Ask"):
-    with st.spinner("Processing..."):
-        if(user_input):
+    if not user_input:
+        st.warning("Please enter a question.")
+    else:
+        with st.spinner("Processing..."):
             answer = rag(user_input)
             st.success("Completed!")
             st.write(answer["answer"])
-    
+
             st.write(f"Prompt tokens: {answer['prompt_tokens']}")
             st.write(f"Completion tokens: {answer['completion_tokens']}")
             st.write(f"Total tokens: {answer['total_tokens']}")
