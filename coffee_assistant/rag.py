@@ -1,31 +1,18 @@
 from openai import OpenAI
 from dotenv import load_dotenv
-from coffee_assistant import ingest
+from coffee_assistant import retrieval
 
 
 load_dotenv()
 client = OpenAI()
 
-_index = None
 
 def get_index():
-    global _index
-    if _index is None:
-        _index = ingest.load_index()
-    return _index
+    return retrieval.get_index()
 
 
-def search(query, index):
-    boost = {}
-
-    results = index.search(
-        query=query,
-        filter_dict={},
-        boost_dict=boost,
-        num_results=4
-    )
-
-    return results
+def search(query, num_results=10):
+    return retrieval.hybrid_search(query, num_results=num_results)
 
 
 prompt_template = """
@@ -75,8 +62,7 @@ def llm(prompt, model="gpt-4o-mini"):
 
 
 def rag(query, model="gpt-4o-mini"):
-    index = get_index()
-    search_results = search(query, index)
+    search_results = search(query)
     prompt = build_prompt(query, search_results)
     answer, token_stats = llm(prompt, model=model)
 

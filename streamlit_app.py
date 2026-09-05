@@ -1,8 +1,9 @@
 import streamlit as st
-from coffee_assistant.rag import rag, get_index 
+from coffee_assistant.rag import rag
+from coffee_assistant import retrieval
 
 
-with st.spinner("Loading knowledge base..."): get_index()
+with st.spinner("Loading knowledge base..."): retrieval.get_vector_index()
 
 st.title("Coffee Assistant")
 

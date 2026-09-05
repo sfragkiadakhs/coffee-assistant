@@ -69,6 +69,11 @@ def fetch_articles(titles):
 
     for title in titles:
         article = fetch_article(title, session)
+        if "missing" in article or "extract" not in article:
+            # typo'd/renamed title, or the redirect didn't resolve to a real page
+            print(f"Skipping '{title}': no Wikipedia extract found")
+            continue
+
         article_data = {
             "doc_id": article['pageid'],
             "title": article['title'],

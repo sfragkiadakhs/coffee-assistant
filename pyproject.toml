@@ -9,10 +9,18 @@ dependencies = [
     "gitsource>=0.0.5",
     "jupyter>=1.1.1",
     "minsearch>=0.2.0",
+    "numpy>=2.5.2",
+    "onnxruntime>=1.29.0",
     "openai>=3.6.0",
     "pandas>=3.0.5",
     "python-dotenv>=1.2.3",
     "requests>=2.34.2",
     "streamlit>=1.62.0",
+    "tokenizers>=0.23.2",
     "tqdm>=4.70.0",
+]
+
+[dependency-groups]
+dev = [
+    "huggingface-hub>=1.30.0",
 ]
