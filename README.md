@@ -66,13 +66,27 @@ Vector embeddings come from a local ONNX MiniLM model (`coffee_assistant/embedde
 adapted from the LLM Zoomcamp `02-vector-search` module) — no API calls, no PyTorch
 dependency, and a small enough footprint to keep the eventual Docker image lightweight.
 
+## LLM evaluation
+
+`notebooks/llm-eval.ipynb` compares two RAG prompts on 100 sampled ground-truth
+questions, judged by gpt-4o-mini as an LLM judge (NON_RELEVANT / PARTLY_RELEVANT / RELEVANT):
+
+| Prompt | Relevant | Partly relevant | Non relevant |
+|---|---|---|---|
+| **Default** | **0.97** | 0.02 | 0.01 |
+| "I don't know" variant | 0.91 | 0.03 | 0.06 |
+
+The default prompt (used in production, `rag.py`'s `prompt_template`) wins outright,
+so no change was needed — this evaluation confirms it over an alternative that
+explicitly allows the model to say "I don't know" when context is insufficient.
+
 ## Project structure
 
 - `coffee_assistant/ingest.py` — fetches Wikipedia articles, chunks them, loads them
   into DuckDB via a dlt pipeline, and builds the keyword search index.
 - `coffee_assistant/embedder.py` — local ONNX MiniLM embedder used for vector search
-  (no API calls); `download_embedder.py` is the one-time script that pulls the model
-  into `models/` (gitignored).
+  (no API calls); auto-downloads the model into `models/` (gitignored) on first use via
+  `download_embedder.py` if it isn't already there.
 - `coffee_assistant/retrieval.py` — keyword, vector, and hybrid (RRF) search; this is
   the production search used by `rag.py`.
 - `coffee_assistant/rag.py` — prompt building and the LLM call; `search()` delegates
@@ -83,8 +97,11 @@ dependency, and a small enough footprint to keep the eventual Docker image light
   used for retrieval/LLM evaluation.
 - `notebooks/retrieval-eval.ipynb` — evaluates keyword vs. vector vs. hybrid search
   (results in [Retrieval evaluation](#retrieval-evaluation) above).
-- `data/` — source titles list and ground-truth CSV; the generated DuckDB file is
-  gitignored and rebuilt on first run.
+- `notebooks/llm-eval.ipynb` — compares RAG prompts with an LLM judge
+  (results in [LLM evaluation](#llm-evaluation) above).
+- `data/` — source titles list, ground-truth CSV, and per-prompt LLM-eval results
+  (`rag-eval-default.csv`, `rag-eval-v2.csv`); the generated DuckDB file is gitignored
+  and rebuilt on first run.
 
 This README will be expanded with architecture, evaluation, and monitoring sections
 as the project progresses.

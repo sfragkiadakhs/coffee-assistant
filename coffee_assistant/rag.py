@@ -34,7 +34,7 @@ content: {content}
 """.strip()
 
 
-def build_prompt(query, search_results):
+def build_prompt(query, search_results, prompt_template=prompt_template):
     context = ""
 
     for doc in search_results:
@@ -61,9 +61,9 @@ def llm(prompt, model="gpt-4o-mini"):
     return answer, token_stats
 
 
-def rag(query, model="gpt-4o-mini"):
+def rag(query, model="gpt-4o-mini", prompt_template=prompt_template):
     search_results = search(query)
-    prompt = build_prompt(query, search_results)
+    prompt = build_prompt(query, search_results,prompt_template)
     answer, token_stats = llm(prompt, model=model)
 
     answer_data = {

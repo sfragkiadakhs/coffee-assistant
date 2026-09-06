@@ -2,13 +2,19 @@ import numpy as np
 import onnxruntime as ort
 from tokenizers import Tokenizer
 from pathlib import Path
+from coffee_assistant import download_embedder
 
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 
 class Embedder:
     def __init__(self, path=None):
         path = Path(path) if path else MODELS_DIR / "Xenova/all-MiniLM-L6-v2"
-        self.tokenizer = Tokenizer.from_file(str(path / "tokenizer.json"))
+
+        if not (path / "tokenizer.json").exists():
+            download_embedder.download("Xenova/all-MiniLM-L6-v2", dest=MODELS_DIR)
+        
+        self.tokenizer = Tokenizer.from_file(str(path / "tokenizer.json"))  
+        
         self.session = ort.InferenceSession(
             str(path / "model.onnx"), providers=["CPUExecutionProvider"]
         )
