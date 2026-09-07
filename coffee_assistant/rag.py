@@ -1,6 +1,7 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 from coffee_assistant import retrieval
+from time import time
 
 
 load_dotenv()
@@ -60,17 +61,38 @@ def llm(prompt, model="gpt-4o-mini"):
 
     return answer, token_stats
 
+def calculate_openai_cost(model, tokens):
+    openai_cost = 0
+
+    if model == "gpt-4o-mini":
+        openai_cost = (
+            tokens["prompt_tokens"] * 0.00015 + tokens["completion_tokens"] * 0.0006
+        ) / 1000
+    else:
+        print("Model not recognized. OpenAI cost calculation failed.")
+
+    return openai_cost
 
 def rag(query, model="gpt-4o-mini", prompt_template=prompt_template):
+    t0 = time()
+
     search_results = search(query)
     prompt = build_prompt(query, search_results,prompt_template)
     answer, token_stats = llm(prompt, model=model)
+    openai_cost_rag = calculate_openai_cost(model, token_stats)
+
+    t1 = time()
+    took = t1 - t0
 
     answer_data = {
         "answer": answer,
         "model_used": model,
+        "question": query,
+        "prompt": prompt,
+        "response_time": took,
         "prompt_tokens": token_stats["prompt_tokens"],
         "completion_tokens": token_stats["completion_tokens"],
         "total_tokens": token_stats["total_tokens"],
+        "cost": openai_cost_rag,
     }
     return answer_data
