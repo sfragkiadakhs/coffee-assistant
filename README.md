@@ -12,24 +12,41 @@ that same set of articles, instead of reading through them yourself.
 
 ![Coffee Assistant UI](images/user-interface.png)
 
+## Quickstart
+
+```bash
+cp .env.example .env    # add your OPENAI_API_KEY
+docker compose up -d --build
+uv run python -c "from coffee_assistant.db import init_db; init_db()"   # once, to create the Postgres tables
+```
+
+The app runs at http://localhost:8501, Grafana at http://localhost:3000. The image
+bakes in the prebuilt DuckDB index and ONNX embedder model, so it needs no outbound
+network calls to start.
+
 ## Data
 
 Coffee-related Wikipedia articles (Coffee, Espresso, Coffee roasting, Arabica coffee,
 coffee-producing regions, etc.), ingested and chunked via a [dlt](https://dlthub.com/)
 pipeline into a local DuckDB database.
 
-## Setup
+The original plan was to use [Coffee Review](https://www.coffeereview.com/) tasting
+reviews as the primary source, pending permission from the site (email sent to the
+lead reviewer). Permission hadn't come through by the project deadline, so Wikipedia —
+always the fallback path — is what's in production. Nothing about the pipeline is
+Wikipedia-specific; adding Coffee Review later is a second `dlt` source feeding the
+same DuckDB table, not a rebuild.
+
+## Full setup
 
 ```bash
 uv sync
 ```
 
 Copy `.env.example` to `.env` and add your `OPENAI_API_KEY`. The `POSTGRES_*`/`GRAFANA_*`
-vars are only needed for monitoring (see below) — defaults work fine for local use.
+vars are only needed for monitoring — defaults work fine for local use.
 
-## Running
-
-### Streamlit app
+### Running locally
 
 ```bash
 uv run streamlit run streamlit_app.py
@@ -38,7 +55,8 @@ uv run streamlit run streamlit_app.py
 Opens a browser UI with a question box. On startup it builds the knowledge base
 (fetching/chunking the Wikipedia articles into DuckDB if it doesn't exist yet, then
 the keyword index and vector embeddings), shown with a loading spinner; every
-question after that hits the cached index directly.
+question after that hits the cached index directly. If you're not running Postgres/Grafana
+in Docker too, start just those two: `docker compose up -d postgres grafana`.
 
 ### From Python
 
@@ -94,17 +112,44 @@ The default prompt (used in production, `rag.py`'s `prompt_template`) wins outri
 so no change was needed — this evaluation confirms it over an alternative that
 explicitly allows the model to say "I don't know" when context is insufficient.
 
+## Architecture
+
+```mermaid
+flowchart TD
+    User["User"]
+    UI["Streamlit UI<br/>(streamlit_app.py)"]
+    RAG["RAG module (rag.py)"]
+    Keyword["Keyword search<br/>(minsearch, TF-IDF)"]
+    Vector["Vector search<br/>(ONNX MiniLM embeddings)"]
+    DuckDB[("DuckDB<br/>chunked Wikipedia articles")]
+    LLM["OpenAI LLM<br/>gpt-4o-mini"]
+    DB[("PostgreSQL<br/>conversations + feedback")]
+    Grafana["Grafana dashboard<br/>localhost:3000"]
+
+    User --> UI
+    UI --> RAG
+    RAG -->|hybrid search, RRF| Keyword
+    RAG -->|hybrid search, RRF| Vector
+    Keyword --> DuckDB
+    Vector --> DuckDB
+    RAG --> LLM
+    RAG --> UI
+    UI --> DB
+    DB --> Grafana
+
+    style Keyword fill:#1e3a5f,color:#fff
+    style Vector fill:#1e3a5f,color:#fff
+    style LLM fill:#10a37f,color:#fff
+    style DB fill:#336791,color:#fff
+    style Grafana fill:#f46800,color:#fff
+```
+
 ## Monitoring
 
 Every question asked in the Streamlit app is logged to Postgres — question, answer, model,
 prompt, token counts, response time, and estimated cost — and each answer has 👍/👎 feedback
-buttons that log to a separate `feedback` table (`coffee_assistant/db.py`).
-
-```bash
-docker compose up -d postgres grafana
-uv run python -c "from coffee_assistant.db import init_db; init_db()"
-uv run streamlit run streamlit_app.py
-```
+buttons that log to a separate `feedback` table (`coffee_assistant/db.py`). See
+[Quickstart](#quickstart) to bring up Postgres + Grafana alongside the app.
 
 Grafana (`localhost:3000`, default login `admin`/`admin`) has a 5-panel dashboard built on
 top of those two tables:
@@ -119,6 +164,18 @@ top of those two tables:
 
 The dashboard isn't provisioned automatically — `grafana/dashboard.json` is the exported
 dashboard definition; import it via Grafana's UI (Dashboards → New → Import) to reproduce it.
+
+## Decisions and trade-offs
+
+- **Wikipedia over Coffee Review**: the primary source was pending third-party
+  permission that didn't arrive in time (see [Data](#data)). Wikipedia was the
+  planned fallback from the start, so the pipeline and eval work didn't need to
+  change when the deadline hit.
+- **Hybrid search + gpt-4o-mini**: hybrid search (RRF) beat keyword-only and
+  vector-only on Hit Rate and MRR (see [Retrieval evaluation](#retrieval-evaluation)),
+  and gpt-4o-mini scored 0.97 RELEVANT against an alternative prompt's 0.91
+  (see [LLM evaluation](#llm-evaluation)) — good enough that a larger, pricier
+  model wasn't worth it.
 
 ## Project structure
 
@@ -135,7 +192,8 @@ dashboard definition; import it via Grafana's UI (Dashboards → New → Import)
   `feedback` tables, `save_conversation()`/`save_feedback()` write to them.
 - `streamlit_app.py` — Streamlit UI: a question box that calls `rag()`, displays the
   answer with token usage, logs the conversation, and shows +1/-1 feedback buttons.
-- `docker-compose.yml` — Postgres + Grafana for monitoring.
+- `Dockerfile` / `docker-compose.yml` — containerizes the app (Streamlit), Postgres, and
+  Grafana into one stack (see [Quickstart](#quickstart) above).
 - `grafana/dashboard.json` — exported Grafana dashboard definition (see
   [Monitoring](#monitoring) above).
 - `notebooks/ground-truth-generation.ipynb` — generates the ground-truth question set
