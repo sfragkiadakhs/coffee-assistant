@@ -18,6 +18,7 @@ def get_db_connection():
         dbname=os.getenv("POSTGRES_DB", "coffee_assistant"),
         user=os.getenv("POSTGRES_USER", "user"),
         password=os.getenv("POSTGRES_PASSWORD", "password"),
+        sslmode=os.getenv("POSTGRES_SSLMODE", "prefer"),
     )
 
 def init_db():
