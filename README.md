@@ -205,3 +205,7 @@ dashboard definition; import it via Grafana's UI (Dashboards → New → Import)
 - `data/` — source titles list, ground-truth CSV, and per-prompt LLM-eval results
   (`rag-eval-default.csv`, `rag-eval-v2.csv`); the generated DuckDB file is gitignored
   and rebuilt on first run.
+- `requirements.txt` — pip-format dependency list generated from `pyproject.toml`/`uv.lock`
+  via `uv export --no-dev --no-hashes --no-emit-project --format requirements-txt -o requirements.txt`,
+  for hosts (e.g. Streamlit Community Cloud) that don't install from `uv.lock` directly.
+  Regenerate it after changing dependencies.
