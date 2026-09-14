@@ -2,6 +2,8 @@
 
 A coffee recommendation/Q&A RAG assistant built for the LLM Zoomcamp capstone project.
 
+**Live demo:** [coffee-assist.streamlit.app](https://coffee-assist.streamlit.app/)
+
 ## Problem
 
 Learning about coffee — origins, roasting, brewing methods, regional differences — usually
