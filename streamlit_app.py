@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import pandas as pd
 import streamlit as st
 from coffee_assistant.rag import rag
 from coffee_assistant import retrieval, db
@@ -8,11 +11,18 @@ with st.spinner("Loading knowledge base..."): retrieval.get_vector_index()
 
 st.title("☕ Coffee Assistant")
 
-example_questions = [
-    "What is Arabica coffee?",
-    "How is coffee roasted?",
-    "Espresso vs. drip coffee?",
-]
+EVAL_CSV = Path(__file__).resolve().parent / "data" / "rag-eval-default.csv"
+
+# Sample 3 example questions from the LLM-eval results, keeping only ones the judge
+# scored RELEVANT (so the demo never leads with one flagged PARTLY_RELEVANT/NON_RELEVANT).
+# Picked once per browser session (not reseeded on every rerun) via session_state, so
+# each visit gets a different trio but they don't shuffle mid-interaction.
+if "example_questions" not in st.session_state:
+    eval_df = pd.read_csv(EVAL_CSV)
+    relevant = eval_df[eval_df["relevance"] == "RELEVANT"]
+    st.session_state.example_questions = relevant["question"].sample(3).tolist()
+
+example_questions = st.session_state.example_questions
 
 st.write("Try an example:")
 cols = st.columns(len(example_questions))
