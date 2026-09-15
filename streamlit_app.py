@@ -13,13 +13,22 @@ st.title("☕ Coffee Assistant")
 
 EVAL_CSV = Path(__file__).resolve().parent / "data" / "rag-eval-default.csv"
 
+# Chunks that are RELEVANT per the LLM judge (i.e. faithfully answered from context)
+# but drift off-topic for a coffee-assistant demo, e.g. caffeine-regulation history
+# that happens to be about Coca-Cola rather than coffee. Excluded from the example
+# question pool only — the knowledge base and eval numbers are untouched.
+EXCLUDED_EXAMPLE_CHUNK_IDS = {"6868_52"}  # "What did the Supreme Court decide ... Coca-Cola?"
+
 # Sample 3 example questions from the LLM-eval results, keeping only ones the judge
 # scored RELEVANT (so the demo never leads with one flagged PARTLY_RELEVANT/NON_RELEVANT).
 # Picked once per browser session (not reseeded on every rerun) via session_state, so
 # each visit gets a different trio but they don't shuffle mid-interaction.
 if "example_questions" not in st.session_state:
     eval_df = pd.read_csv(EVAL_CSV)
-    relevant = eval_df[eval_df["relevance"] == "RELEVANT"]
+    relevant = eval_df[
+        (eval_df["relevance"] == "RELEVANT")
+        & (~eval_df["chunk_id"].isin(EXCLUDED_EXAMPLE_CHUNK_IDS))
+    ]
     st.session_state.example_questions = relevant["question"].sample(3).tolist()
 
 example_questions = st.session_state.example_questions
