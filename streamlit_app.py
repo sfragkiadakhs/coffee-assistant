@@ -9,6 +9,10 @@ st.set_page_config(page_title="Coffee Assistant", page_icon="☕")
 with st.spinner("Loading knowledge base..."): retrieval.get_vector_index()
 
 st.title("☕ Coffee Assistant")
+st.caption(
+    "Ask me anything about coffee — origins, roasting, brewing methods, regions — and "
+    "I'll answer from a set of coffee Wikipedia articles."
+)
 
 # Small hand-picked pool of simple, beginner-friendly openers — the LLM-eval ground-truth
 # questions (data/rag-eval-default.csv) are all 9+ words by construction (one specific fact
@@ -33,7 +37,7 @@ if "example_questions" not in st.session_state:
 
 example_questions = st.session_state.example_questions
 
-st.write("Try an example:")
+st.write("Try an example, or type your own question below:")
 cols = st.columns(len(example_questions))
 for col, question in zip(cols, example_questions):
     with col:
@@ -42,7 +46,11 @@ for col, question in zip(cols, example_questions):
             st.rerun()
 
 with st.form("ask_form"):
-    user_input = st.text_input("Enter your question:", key="user_input")
+    user_input = st.text_input(
+        "Enter your question:",
+        key="user_input",
+        placeholder="e.g. What's the difference between Arabica and Robusta?",
+    )
     submitted = st.form_submit_button("Ask")
 
 if submitted:
