@@ -1,6 +1,5 @@
-from pathlib import Path
+import random
 
-import pandas as pd
 import streamlit as st
 from coffee_assistant.rag import rag
 from coffee_assistant import retrieval, db
@@ -11,25 +10,26 @@ with st.spinner("Loading knowledge base..."): retrieval.get_vector_index()
 
 st.title("☕ Coffee Assistant")
 
-EVAL_CSV = Path(__file__).resolve().parent / "data" / "rag-eval-default.csv"
+# Small hand-picked pool of simple, beginner-friendly openers — the LLM-eval ground-truth
+# questions (data/rag-eval-default.csv) are all 9+ words by construction (one specific fact
+# per chunk), too detailed to welcome a first-time visitor. 3 are sampled at random per
+# browser session (not reseeded on every rerun) via session_state, so each visit gets a
+# different trio but they don't shuffle mid-interaction.
+EXAMPLE_QUESTION_POOL = [
+    "What is Arabica coffee?",
+    "What is Robusta coffee?",
+    "How is coffee roasted?",
+    "Espresso vs. drip coffee?",
+    "How is decaf coffee made?",
+    "What is cold brew coffee?",
+    "Where does coffee come from?",
+    "What is a moka pot?",
+    "How much caffeine is in coffee?",
+    "What is fair trade coffee?",
+]
 
-# Chunks that are RELEVANT per the LLM judge (i.e. faithfully answered from context)
-# but drift off-topic for a coffee-assistant demo, e.g. caffeine-regulation history
-# that happens to be about Coca-Cola rather than coffee. Excluded from the example
-# question pool only — the knowledge base and eval numbers are untouched.
-EXCLUDED_EXAMPLE_CHUNK_IDS = {"6868_52"}  # "What did the Supreme Court decide ... Coca-Cola?"
-
-# Sample 3 example questions from the LLM-eval results, keeping only ones the judge
-# scored RELEVANT (so the demo never leads with one flagged PARTLY_RELEVANT/NON_RELEVANT).
-# Picked once per browser session (not reseeded on every rerun) via session_state, so
-# each visit gets a different trio but they don't shuffle mid-interaction.
 if "example_questions" not in st.session_state:
-    eval_df = pd.read_csv(EVAL_CSV)
-    relevant = eval_df[
-        (eval_df["relevance"] == "RELEVANT")
-        & (~eval_df["chunk_id"].isin(EXCLUDED_EXAMPLE_CHUNK_IDS))
-    ]
-    st.session_state.example_questions = relevant["question"].sample(3).tolist()
+    st.session_state.example_questions = random.sample(EXAMPLE_QUESTION_POOL, 3)
 
 example_questions = st.session_state.example_questions
 
