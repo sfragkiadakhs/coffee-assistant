@@ -1,3 +1,5 @@
+import threading
+
 import numpy as np
 
 from coffee_assistant import ingest
@@ -8,12 +10,20 @@ _index = None
 _embedder = None
 _chunks = None
 _X = None
+# Streamlit runs each script run in its own thread within one process, so two runs
+# can overlap (e.g. a page reload during the slow cold start). Without these locks both
+# would call ingest.load_index() at once, and dlt's pipeline setup races on its working
+# folder (FileExistsError / rmtree errors).
+_index_lock = threading.Lock()
+_vector_lock = threading.Lock()
 
 
 def get_index():
     global _index
     if _index is None:
-        _index = ingest.load_index()
+        with _index_lock:
+            if _index is None:
+                _index = ingest.load_index()
     return _index
 
 
@@ -21,16 +31,19 @@ def get_vector_index():
     """Lazily build the chunk embedding matrix, rebuilt fresh each process run."""
     global _embedder, _chunks, _X
     if _X is None:
-        _embedder = Embedder()
-        _chunks = get_index().docs
-        texts = [chunk['content'] for chunk in _chunks]
+        with _vector_lock:
+            if _X is None:
+                embedder = Embedder()
+                chunks = get_index().docs
+                texts = [chunk['content'] for chunk in chunks]
 
-        vectors = []
-        batch_size = 50
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            vectors.extend(_embedder.encode_batch(batch))
-        _X = np.array(vectors)
+                vectors = []
+                batch_size = 50
+                for i in range(0, len(texts), batch_size):
+                    batch = texts[i:i + batch_size]
+                    vectors.extend(embedder.encode_batch(batch))
+
+                _embedder, _chunks, _X = embedder, chunks, np.array(vectors)
 
     return _embedder, _chunks, _X
 

@@ -2,7 +2,7 @@
 
 A coffee recommendation/Q&A RAG assistant built for the LLM Zoomcamp capstone project.
 
-**Live demo:** [coffee-assist.streamlit.app](https://coffee-assist.streamlit.app/)
+**Live demo:** [coffee-assist.streamlit.app](https://coffee-assist.streamlit.app/) — first load after inactivity can take 1–2 minutes while the knowledge base is built.
 
 ## Problem
 
