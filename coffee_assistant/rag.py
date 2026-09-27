@@ -19,11 +19,25 @@ def search(query, num_results=10):
 prompt_template = """
 You're a coffee assistant. Answer the QUESTION based on the CONTEXT from our coffee database.
 Use only the facts from the CONTEXT when answering the QUESTION.
+If the CONTEXT doesn't answer the QUESTION, say so. Don't substitute a related but different
+figure (for example a toxic or fatal dose when asked about recommended intake).
 
 QUESTION: {question}
 
 CONTEXT:
 {context}
+""".strip()
+
+
+rewrite_template = """
+You rewrite user questions for a search engine over coffee-related Wikipedia articles.
+Fix spelling mistakes and rephrase the question so it is clear and specific, using the
+terms an encyclopedia article would use. Keep the original meaning. Don't answer it and
+don't add new facts.
+
+Return only the rewritten question.
+
+QUESTION: {question}
 """.strip()
 
 
@@ -73,12 +87,28 @@ def calculate_openai_cost(model, tokens):
 
     return openai_cost
 
-def rag(query, model="gpt-4o-mini", prompt_template=prompt_template):
+def rewrite_query(query, model="gpt-4o-mini"):
+    rewritten, token_stats = llm(rewrite_template.format(question=query), model=model)
+    return rewritten.strip(), token_stats
+
+
+def rag(query, model="gpt-4o-mini", prompt_template=prompt_template, rewrite=True):
     t0 = time()
 
-    search_results = search(query)
+    # The rewritten query only drives the search (fixes typos like "coffeine" that keyword
+    # search can't match); the user's original question still goes into the answer prompt.
+    token_stats = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    search_query = query
+    if rewrite:
+        search_query, rewrite_tokens = rewrite_query(query, model=model)
+        for key in token_stats:
+            token_stats[key] += rewrite_tokens[key]
+
+    search_results = search(search_query)
     prompt = build_prompt(query, search_results,prompt_template)
-    answer, token_stats = llm(prompt, model=model)
+    answer, answer_tokens = llm(prompt, model=model)
+    for key in token_stats:
+        token_stats[key] += answer_tokens[key]
     openai_cost_rag = calculate_openai_cost(model, token_stats)
 
     t1 = time()
@@ -88,6 +118,7 @@ def rag(query, model="gpt-4o-mini", prompt_template=prompt_template):
         "answer": answer,
         "model_used": model,
         "question": query,
+        "search_query": search_query,
         "prompt": prompt,
         "response_time": took,
         "prompt_tokens": token_stats["prompt_tokens"],
