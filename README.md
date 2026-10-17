@@ -1,6 +1,10 @@
 # Coffee Assistant
 
-A coffee recommendation/Q&A RAG assistant built for the LLM Zoomcamp capstone project.
+A RAG chatbot that answers coffee questions from Wikipedia articles, with measured retrieval and answer quality.
+Capstone project of LLM Zoomcamp 2026 ([certificate](#certificate)).
+
+**Results:** hybrid search finds the right chunk in 75% of test questions (Hit Rate 0.75 vs. 0.56 keyword-only) ·
+97 of 100 test answers rated relevant by an LLM judge.
 
 **Live demo:** [coffee-assist.streamlit.app](https://coffee-assist.streamlit.app/) — first load after inactivity can take 1–2 minutes while the knowledge base is built.
 
@@ -211,3 +215,9 @@ dashboard definition; import it via Grafana's UI (Dashboards → New → Import)
   via `uv export --no-dev --no-hashes --no-emit-project --format requirements-txt -o requirements.txt`,
   for hosts (e.g. Streamlit Community Cloud) that don't install from `uv.lock` directly.
   Regenerate it after changing dependencies.
+
+## Certificate
+
+Built as the capstone project of [LLM Zoomcamp 2026](https://github.com/DataTalksClub/llm-zoomcamp) by DataTalks.Club.
+
+<img src="images/llm-zoomcamp-certificate.png" alt="LLM Zoomcamp 2026 certificate" width="500">
