@@ -19,8 +19,8 @@ def search(query, num_results=10):
 prompt_template = """
 You're a coffee assistant. Answer the QUESTION based on the CONTEXT from our coffee database.
 Use only the facts from the CONTEXT when answering the QUESTION.
-If the CONTEXT doesn't answer the QUESTION, say so. Don't substitute a related but different
-figure (for example a toxic or fatal dose when asked about recommended intake).
+Don't substitute a related but different figure (for example a toxic or fatal dose when
+asked about recommended intake).
 
 QUESTION: {question}
 

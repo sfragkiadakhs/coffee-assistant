@@ -101,8 +101,27 @@ Vector embeddings come from a local ONNX MiniLM model (`coffee_assistant/embedde
 adapted from the LLM Zoomcamp `02-vector-search` module) — no API calls, no PyTorch
 dependency, and a small enough footprint to keep the eventual Docker image lightweight.
 
+### Query rewriting
+
+A real user typed "coffeine" instead of "caffeine", and search found nothing useful. So
+before searching, the app now asks gpt-4o-mini to fix the question's spelling and wording
+(`rag.rewrite_query()`). Only the search uses the rewritten question; the answer still uses
+the user's own words.
+
+Tested on 500 ground-truth questions, as written and with typos added (hybrid search):
+
+| Questions | Rewriting | Hit Rate | MRR |
+|---|---|---|---|
+| As written | no | 0.722 | 0.422 |
+| As written | yes | 0.720 | 0.397 |
+| With typos | no | 0.642 | 0.353 |
+| With typos | **yes** | **0.742** | **0.409** |
+
+On clean questions rewriting changes almost nothing; with typos it brings search back up
+to clean-question level. Real users make typos, so **rewriting is used in production**.
+
 **Best practices:** hybrid search (combining keyword and vector search, evaluated above)
-is used in production.
+and query rewriting are both used in production.
 
 ## LLM evaluation
 
@@ -114,9 +133,25 @@ questions, judged by gpt-4o-mini as an LLM judge (NON_RELEVANT / PARTLY_RELEVANT
 | **Default** | **0.97** | 0.02 | 0.01 |
 | "I don't know" variant | 0.91 | 0.03 | 0.06 |
 
-The default prompt (used in production, `rag.py`'s `prompt_template`) wins outright,
-so no change was needed — this evaluation confirms it over an alternative that
-explicitly allows the model to say "I don't know" when context is insufficient.
+The default prompt wins over an alternative that explicitly allows the model to say
+"I don't know" when context is insufficient.
+
+### Round 2: query rewriting + safer prompt
+
+After the "coffeine" question, the bot answered with the *fatal* dose of caffeine
+(75–100 cups) instead of the safe daily amount. Two changes followed: query rewriting
+(see [above](#query-rewriting)) and one extra prompt rule, *don't swap in a different
+number, like a fatal dose when asked about daily intake*. Tested on the same 100 questions:
+
+| Setup | Relevant | Partly relevant | Non relevant |
+|---|---|---|---|
+| Old (default prompt, no rewriting) | 0.96 | 0.02 | 0.02 |
+| First try (also "say so if the context doesn't answer") | 0.87 | 0.06 | 0.07 |
+| **New (rewriting + narrow rule)** | **0.98** | 0.01 | 0.01 |
+
+The first try made the bot give up too often, so only the narrow rule was kept. The new
+setup is used in production (`rag.py`), and the caffeine question now gets the right answer
+(under 400 mg a day for adults).
 
 ## Architecture
 
@@ -138,7 +173,7 @@ flowchart TD
     RAG -->|hybrid search, RRF| Vector
     Keyword --> DuckDB
     Vector --> DuckDB
-    RAG --> LLM
+    RAG -->|rewrite query, then answer| LLM
     RAG --> UI
     UI --> DB
     DB --> Grafana
@@ -179,9 +214,12 @@ dashboard definition; import it via Grafana's UI (Dashboards → New → Import)
   change when the deadline hit.
 - **Hybrid search + gpt-4o-mini**: hybrid search (RRF) beat keyword-only and
   vector-only on Hit Rate and MRR (see [Retrieval evaluation](#retrieval-evaluation)),
-  and gpt-4o-mini scored 0.97 RELEVANT against an alternative prompt's 0.91
+  and with query rewriting gpt-4o-mini scored 0.98 RELEVANT
   (see [LLM evaluation](#llm-evaluation)) — good enough that a larger, pricier
   model wasn't worth it.
+- **Safety over a perfect score**: the extra prompt rule exists because of a real
+  wrong answer (a fatal dose given as a daily amount). A broader "say so if you don't
+  know" rule was tried and dropped because the bot gave up too often.
 
 ## Project structure
 
@@ -192,8 +230,9 @@ dashboard definition; import it via Grafana's UI (Dashboards → New → Import)
   `download_embedder.py` if it isn't already there.
 - `coffee_assistant/retrieval.py` — keyword, vector, and hybrid (RRF) search; this is
   the production search used by `rag.py`.
-- `coffee_assistant/rag.py` — prompt building and the LLM call; `search()` delegates
-  to `retrieval.hybrid_search()`; tracks response time and estimated cost.
+- `coffee_assistant/rag.py` — query rewriting, prompt building and the LLM call;
+  `search()` delegates to `retrieval.hybrid_search()`; tracks response time and
+  estimated cost (rewrite + answer).
 - `coffee_assistant/db.py` — Postgres logging: `init_db()` creates the `conversations`/
   `feedback` tables, `save_conversation()`/`save_feedback()` write to them.
 - `streamlit_app.py` — Streamlit UI: a question box that calls `rag()`, displays the
@@ -204,13 +243,14 @@ dashboard definition; import it via Grafana's UI (Dashboards → New → Import)
   [Monitoring](#monitoring) above).
 - `notebooks/ground-truth-generation.ipynb` — generates the ground-truth question set
   used for retrieval/LLM evaluation.
-- `notebooks/retrieval-eval.ipynb` — evaluates keyword vs. vector vs. hybrid search
-  (results in [Retrieval evaluation](#retrieval-evaluation) above).
-- `notebooks/llm-eval.ipynb` — compares RAG prompts with an LLM judge
+- `notebooks/retrieval-eval.ipynb` — evaluates keyword vs. vector vs. hybrid search,
+  and query rewriting (results in [Retrieval evaluation](#retrieval-evaluation) above).
+- `notebooks/llm-eval.ipynb` — compares RAG prompts with an LLM judge, both rounds
   (results in [LLM evaluation](#llm-evaluation) above).
-- `data/` — source titles list, ground-truth CSV, and per-prompt LLM-eval results
-  (`rag-eval-default.csv`, `rag-eval-v2.csv`); the generated DuckDB file is gitignored
-  and rebuilt on first run.
+- `data/` — source titles list, ground-truth CSV, and LLM-eval results: round 1
+  (`rag-eval-default.csv`, `rag-eval-v2.csv`) and round 2 (`rag-eval-round2-old.csv`,
+  `rag-eval-round2-first-try.csv`, `rag-eval-round2-new.csv`); the generated DuckDB file
+  is gitignored and rebuilt on first run.
 - `requirements.txt` — pip-format dependency list generated from `pyproject.toml`/`uv.lock`
   via `uv export --no-dev --no-hashes --no-emit-project --format requirements-txt -o requirements.txt`,
   for hosts (e.g. Streamlit Community Cloud) that don't install from `uv.lock` directly.
