@@ -1,7 +1,7 @@
 [project]
 name = "coffee-assistant"
 version = "0.1.0"
-description = "Add your description here"
+description = "RAG assistant for coffee questions, with evaluated retrieval and answer quality"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -24,4 +24,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "huggingface-hub>=1.30.0",
+    "pytest>=9.2.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]       # add the repo root to the search path -> coffee_assistant is found
+testpaths = ["tests"]    # only look for tests in tests/ (faster, skips notebooks/.venv)

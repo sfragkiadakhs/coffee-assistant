@@ -72,6 +72,14 @@ from coffee_assistant.rag import rag
 rag("What regions produce Arabica coffee?")
 ```
 
+### Running the tests
+
+```bash
+uv run pytest
+```
+
+Unit tests live in `tests/` and run without an API key, database or model download.
+
 ## Ground truth
 
 `notebooks/ground-truth-generation.ipynb` generates 5 synthetic user questions per chunk with
@@ -237,6 +245,8 @@ dashboard definition; import it via Grafana's UI (Dashboards → New → Import)
   `feedback` tables, `save_conversation()`/`save_feedback()` write to them.
 - `streamlit_app.py` — Streamlit UI: a question box that calls `rag()`, displays the
   answer with token usage, logs the conversation, and shows +1/-1 feedback buttons.
+- `tests/` — pytest unit tests; so far the RRF fusion in `retrieval.py` (ranking order,
+  `num_results` cut-off). Config in `pyproject.toml` under `[tool.pytest.ini_options]`.
 - `Dockerfile` / `docker-compose.yml` — containerizes the app (Streamlit), Postgres, and
   Grafana into one stack (see [Quickstart](#quickstart) above).
 - `grafana/dashboard.json` — exported Grafana dashboard definition (see
