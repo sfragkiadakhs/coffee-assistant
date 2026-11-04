@@ -28,22 +28,35 @@ def get_index():
 
 
 def get_vector_index():
-    """Lazily build the chunk embedding matrix, rebuilt fresh each process run."""
+    """Load chunk embeddings from data/embeddings.npz 
+        (built by scripts/build_embeddings.py); 
+        fall back to embedding all chunks if the file is missing or outdated."""
+    
     global _embedder, _chunks, _X
     if _X is None:
         with _vector_lock:
             if _X is None:
                 embedder = Embedder()
                 chunks = get_index().docs
-                texts = [chunk['content'] for chunk in chunks]
+                chunk_ids = [chunk['chunk_id'] for chunk in chunks]
 
-                vectors = []
-                batch_size = 50
-                for i in range(0, len(texts), batch_size):
-                    batch = texts[i:i + batch_size]
-                    vectors.extend(embedder.encode_batch(batch))
+                X = None
+                path = ingest.DATA_DIR / "embeddings.npz"
+                if path.exists():
+                    saved = np.load(path)
+                    if list(saved["chunk_ids"]) == chunk_ids:   # same chunks, same order?
+                        X = saved["X"]
 
-                _embedder, _chunks, _X = embedder, chunks, np.array(vectors)
+                if X is None:   # no file or outdated: the slow way
+                    texts = [chunk['content'] for chunk in chunks]
+                    vectors = []
+                    batch_size = 50
+                    for i in range(0, len(texts), batch_size):
+                        batch = texts[i:i + batch_size]
+                        vectors.extend(embedder.encode_batch(batch))
+                    X = np.array(vectors)
+
+                _embedder, _chunks, _X = embedder, chunks, X
 
     return _embedder, _chunks, _X
 
