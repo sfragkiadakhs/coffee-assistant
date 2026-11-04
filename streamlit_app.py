@@ -10,11 +10,11 @@ with st.spinner("Loading knowledge base..."): retrieval.get_vector_index()
 
 st.title("☕ Coffee Assistant")
 st.caption(
-    "Ask me anything about coffee — origins, roasting, brewing methods, regions — and "
+    "Ask me anything about coffee, like origins, roasting, brewing methods or regions, and "
     "I'll answer from a set of coffee Wikipedia articles."
 )
 
-# Small hand-picked pool of simple, beginner-friendly openers — the LLM-eval ground-truth
+# Small hand-picked pool of simple, beginner-friendly openers. The LLM-eval ground-truth
 # questions (data/rag-eval-default.csv) are all 9+ words by construction (one specific fact
 # per chunk), too detailed to welcome a first-time visitor. 3 are sampled at random per
 # browser session (not reseeded on every rerun) via session_state, so each visit gets a

@@ -80,7 +80,7 @@ def vector_search(query, num_results=10):
 
 def rrf(result_lists, k=1, num_results=10):
     """Reciprocal Rank Fusion. k=1 (not the literature default of 60) because our
-    per-method result lists only have ~10 candidates; see retrieval-eval.ipynb for
+    per-method result lists only have ~10 candidates. See retrieval-eval.ipynb for
     why a larger k flattens the ranking signal at this scale."""
     scores = {}
     docs = {}
@@ -97,7 +97,7 @@ def rrf(result_lists, k=1, num_results=10):
 
 def hybrid_search(query, k=1, num_results=10):
     # Each method always fetches 10 candidates for RRF to fuse, regardless of the
-    # final num_results requested — a bigger candidate pool makes for a better fusion.
+    # final num_results requested. A bigger candidate pool makes for a better fusion.
     text_results = keyword_search(query, num_results=10)
     vector_results = vector_search(query, num_results=10)
     return rrf([text_results, vector_results], k=k, num_results=num_results)

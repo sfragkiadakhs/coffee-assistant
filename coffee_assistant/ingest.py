@@ -51,7 +51,7 @@ def fetch_article(title, session):
         "https://en.wikipedia.org/w/api.php",
         params= {
             "action": "query", "prop": "extracts",
-            "redirects": 1,  # some titles (e.g. "Arabica coffee") are redirects; follow them to get real content
+            "redirects": 1,  # some titles (e.g. "Arabica coffee") are redirects, so follow them to get real content
             "explaintext":1, "format":"json", "titles":title,
         },
     ).json()
