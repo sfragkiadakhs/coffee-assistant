@@ -240,7 +240,8 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   and their vectors are built once and committed to git, so text and vectors come
   from the same snapshot. Measured on Streamlit Cloud: ~20 s → ~10 s to the first
   page (locally, the embedding step went from 4.8 s to 0.2 s). The Docker image
-  follows the same idea, building the data at image build time.
+  copies the same snapshot, so it depends only on git and serves the data the eval
+  measured.
 
 ## Project structure
 
