@@ -86,7 +86,9 @@ rag("What regions produce Arabica coffee?")
 uv run pytest
 ```
 
-Unit tests live in `tests/` and run without an API key, database or model download.
+Unit tests live in `tests/` and run without a database or model download. `test_rag.py`
+still needs `OPENAI_API_KEY` set, because `rag.py` creates the OpenAI client when it is
+imported. The tests replace the LLM with a fake, so no API call is made.
 
 ## Ground truth
 
@@ -259,8 +261,10 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   `feedback` tables, `save_conversation()`/`save_feedback()` write to them.
 - `streamlit_app.py`: Streamlit UI. A question box that calls `rag()`, displays the
   answer with token usage, logs the conversation, and shows +1/-1 feedback buttons.
-- `tests/`: pytest unit tests, so far for the RRF fusion and vector search in
-  `retrieval.py`. Config in `pyproject.toml` under `[tool.pytest.ini_options]`.
+- `tests/`: pytest unit tests for the RRF fusion and vector search in `retrieval.py`,
+  and for `rag()` with a fake LLM and fake search (the rewritten question goes to
+  search, the original to the prompt, tokens from both calls are summed). Config in
+  `pyproject.toml` under `[tool.pytest.ini_options]`.
 - `Dockerfile` / `docker-compose.yml`: containerize the app (Streamlit), Postgres, and
   Grafana into one stack (see [Quickstart](#quickstart) above).
 - `grafana/dashboard.json`: exported Grafana dashboard definition (see
