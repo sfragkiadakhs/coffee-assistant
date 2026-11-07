@@ -23,7 +23,7 @@ that same set of articles, instead of reading through them yourself.
 ```bash
 cp .env.example .env    # add your OPENAI_API_KEY
 docker compose up -d --build
-uv run python -c "from coffee_assistant.db import init_db; init_db()"   # once, to create the Postgres tables
+docker compose run --rm app uv run python -c "from coffee_assistant.db import init_db; init_db()"   # once, creates the tables in the local Postgres
 ```
 
 The app runs at http://localhost:8501, Grafana at http://localhost:3000. The image
@@ -244,6 +244,26 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   page (locally, the embedding step went from 4.8 s to 0.2 s). The Docker image
   copies the same snapshot, so it depends only on git and serves the data the eval
   measured.
+
+## Troubleshooting
+
+**Local Postgres: `password authentication failed`**
+
+- **Symptom:** the app answered, but saving the conversation failed. The Postgres log
+  showed `password authentication failed for user "coffee_assistant_owner"`.
+- **Diagnosis:** a login from inside the container returned
+  `role "coffee_assistant_owner" does not exist`. With the old default user `user`
+  from `.env.example`, `psql -l` listed the databases, but they held no tables.
+- **Root cause:** the Postgres image creates `POSTGRES_USER` only on the first start
+  with an empty data volume. The `postgres_data` volume was created in September
+  with `user`, so the later change in `.env` had no effect.
+- **Fix:** checked that the volume held no data, removed only that volume
+  (`docker compose rm -sf postgres`, `docker volume rm coffee-assistant_postgres_data`)
+  and started Postgres again. Then created the tables with `init_db()` inside the app
+  container, where `POSTGRES_HOST` always points to the local Postgres. One test
+  question then saved one row.
+- **Lesson:** the `POSTGRES_*` variables are read once. After changing them, recreate
+  the volume (or change the user with SQL if the data matters).
 
 ## Project structure
 
