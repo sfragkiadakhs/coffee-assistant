@@ -23,7 +23,7 @@ that same set of articles, instead of reading through them yourself.
 ```bash
 cp .env.example .env    # add your OPENAI_API_KEY
 docker compose up -d --build
-docker compose run --rm app uv run python -c "from coffee_assistant.db import init_db; init_db()"   # once, creates the tables in the local Postgres
+docker compose run --rm app uv run python -c "from coffee_assistant.db import init_db; init_db()"   # creates missing tables only, safe to run again
 ```
 
 The app runs at http://localhost:8501, Grafana at http://localhost:3000. The image
