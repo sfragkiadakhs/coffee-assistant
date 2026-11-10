@@ -283,7 +283,10 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   answer with token usage, logs the conversation, and shows +1/-1 feedback buttons.
 - `tests/`: pytest unit tests for the RRF fusion and vector search in `retrieval.py`,
   and for `rag()` with a fake LLM and fake search (the rewritten question goes to
-  search, the original to the prompt, tokens from both calls are summed). Config in
+  search, the original to the prompt, tokens from both calls are summed), and for the
+  tool-calling loop `answer_with_tools()` with a fake model and a fake `web_search`
+  (the tool runs with the model's arguments, its result goes back with the same
+  `tool_call_id`). The web search provider is not connected yet. Config in
   `pyproject.toml` under `[tool.pytest.ini_options]`.
 - `Dockerfile` / `docker-compose.yml`: containerize the app (Streamlit), Postgres, and
   Grafana into one stack (see [Quickstart](#quickstart) above).

@@ -2,7 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from coffee_assistant import retrieval
 from time import time
-
+import json 
 
 load_dotenv()
 client = OpenAI()
@@ -127,3 +127,46 @@ def rag(query, model="gpt-4o-mini", prompt_template=prompt_template, rewrite=Tru
         "cost": openai_cost_rag,
     }
     return answer_data
+
+
+WEB_SEARCH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "web_search",
+        "description": "Search the web for coffee facts that are not in the coffee database, "
+                       "or that change over time (prices, news).",
+        "parameters": {
+            "type": "object",
+            "properties": {"query": {"type": "string", "description": "The search query"}},
+            "required": ["query"],
+        },
+    },
+}
+
+
+def chat(messages, model="gpt-4o-mini"):
+    response = client.chat.completions.create(
+        model=model, messages=messages, tools=[WEB_SEARCH_TOOL]
+    )
+    return response.choices[0].message
+
+
+def web_search(query):
+    raise NotImplementedError("Web provider comes in the next step")
+
+
+MAX_TOOL_ROUNDS = 5  # safety cap: a model that keeps calling tools can't loop forever
+
+
+def answer_with_tools(question, model="gpt-4o-mini"):
+    messages = [{"role": "user", "content": question}]
+    for _ in range(MAX_TOOL_ROUNDS):
+        message = chat(messages, model=model)
+        if not message.tool_calls:
+            return message.content
+        messages.append(message)
+        for call in message.tool_calls:
+            args = json.loads(call.function.arguments)
+            results = web_search(**args)
+            messages.append({"role": "tool", "tool_call_id": call.id, "content":results})
+    raise RuntimeError("Too many tool rounds")
