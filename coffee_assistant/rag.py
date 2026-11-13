@@ -157,6 +157,14 @@ def web_search(query):
 
 MAX_TOOL_ROUNDS = 5  # safety cap: a model that keeps calling tools can't loop forever
 
+TOOLS = {"web_search": web_search}
+
+def run_tool(name, args):
+    if name not in TOOLS:
+        return f"Unknown tool: {name}"
+    tool = TOOLS[name]
+    return tool(**args)
+
 
 def answer_with_tools(question, model="gpt-4o-mini"):
     messages = [{"role": "user", "content": question}]
@@ -166,7 +174,8 @@ def answer_with_tools(question, model="gpt-4o-mini"):
             return message.content
         messages.append(message)
         for call in message.tool_calls:
+            name = call.function.name
             args = json.loads(call.function.arguments)
-            results = web_search(**args)
+            results = run_tool(name, args)
             messages.append({"role": "tool", "tool_call_id": call.id, "content":results})
     raise RuntimeError("Too many tool rounds")

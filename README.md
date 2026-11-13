@@ -286,7 +286,9 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   search, the original to the prompt, tokens from both calls are summed), and for the
   tool-calling loop `answer_with_tools()` with a fake model and a fake `web_search`
   (the tool runs with the model's arguments, its result goes back with the same
-  `tool_call_id`). The web search provider is not connected yet. Config in
+  `tool_call_id`, and a hallucinated tool name goes back to the model as an error
+  instead of crashing the loop). Tools are looked up by name in `TOOLS`. The web search provider is
+  not connected yet. Config in
   `pyproject.toml` under `[tool.pytest.ini_options]`.
 - `Dockerfile` / `docker-compose.yml`: containerize the app (Streamlit), Postgres, and
   Grafana into one stack (see [Quickstart](#quickstart) above).
