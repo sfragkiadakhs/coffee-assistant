@@ -2,7 +2,7 @@ name: Keep app awake
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "17 */2 * * *"
   workflow_dispatch:
 
 jobs:
