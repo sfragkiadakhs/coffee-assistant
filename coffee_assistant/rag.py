@@ -2,7 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from coffee_assistant import retrieval
 from time import time
-import json 
+import json, os, requests
 
 load_dotenv()
 client = OpenAI()
@@ -152,8 +152,16 @@ def chat(messages, model="gpt-4o-mini"):
 
 
 def web_search(query):
-    raise NotImplementedError("Web provider comes in the next step")
-
+    key = os.environ["TAVILY_API_KEY"]
+    response = requests.post("https://api.tavily.com/search",
+            headers={"Authorization": f"Bearer {key}"},
+            json={"query": query, "max_results": 3}, timeout=10)
+    response.raise_for_status()
+    results = response.json()["results"]
+    lines=[]
+    for r in results:
+        lines.append(f"{r['content']} (source: {r['url']})")
+    return "\n".join(lines)
 
 MAX_TOOL_ROUNDS = 5  # safety cap: a model that keeps calling tools can't loop forever
 

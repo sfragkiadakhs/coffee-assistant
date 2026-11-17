@@ -287,8 +287,10 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   tool-calling loop `answer_with_tools()` with a fake model and a fake `web_search`
   (the tool runs with the model's arguments, its result goes back with the same
   `tool_call_id`, and a hallucinated tool name goes back to the model as an error
-  instead of crashing the loop). Tools are looked up by name in `TOOLS`. The web search provider is
-  not connected yet. Config in
+  instead of crashing the loop). Tools are looked up by name in `TOOLS`. `web_search()`
+  calls the Tavily Search API and returns one line per result with its source URL. Its
+  tests replace the HTTP call with a fake, so they run without a network or an API key.
+  The tool is not used by the app yet. Config in
   `pyproject.toml` under `[tool.pytest.ini_options]`.
 - `Dockerfile` / `docker-compose.yml`: containerize the app (Streamlit), Postgres, and
   Grafana into one stack (see [Quickstart](#quickstart) above).
