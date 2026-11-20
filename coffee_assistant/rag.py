@@ -148,7 +148,15 @@ def chat(messages, model="gpt-4o-mini"):
     response = client.chat.completions.create(
         model=model, messages=messages, tools=[WEB_SEARCH_TOOL]
     )
-    return response.choices[0].message
+    message = response.choices[0].message
+
+    token_stats = {
+        "prompt_tokens": response.usage.prompt_tokens,
+        "completion_tokens": response.usage.completion_tokens,
+        "total_tokens": response.usage.total_tokens,
+    }
+
+    return message, token_stats
 
 
 MAX_RESULT_CHARS = 500
@@ -177,10 +185,14 @@ def run_tool(name, args):
 
 def answer_with_tools(question, model="gpt-4o-mini"):
     messages = [{"role": "user", "content": question}]
+    token_stats = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     for _ in range(MAX_TOOL_ROUNDS):
-        message = chat(messages, model=model)
+        message, message_tokens = chat(messages, model=model)
+        for key in message_tokens:
+            token_stats[key] += message_tokens[key]
+        
         if not message.tool_calls:
-            return message.content
+            return message.content, token_stats
         messages.append(message)
         for call in message.tool_calls:
             name = call.function.name
