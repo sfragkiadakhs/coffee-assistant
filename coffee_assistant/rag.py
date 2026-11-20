@@ -151,6 +151,7 @@ def chat(messages, model="gpt-4o-mini"):
     return response.choices[0].message
 
 
+MAX_RESULT_CHARS = 500
 def web_search(query):
     key = os.environ["TAVILY_API_KEY"]
     response = requests.post("https://api.tavily.com/search",
@@ -160,7 +161,7 @@ def web_search(query):
     results = response.json()["results"]
     lines=[]
     for r in results:
-        lines.append(f"{r['content']} (source: {r['url']})")
+        lines.append(f"{r['content'][:MAX_RESULT_CHARS]} (source: {r['url']})")
     return "\n".join(lines)
 
 MAX_TOOL_ROUNDS = 5  # safety cap: a model that keeps calling tools can't loop forever

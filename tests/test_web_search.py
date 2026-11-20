@@ -38,3 +38,18 @@ def test_answer_names_each_source(sent):
     for result in FAKE_RESULTS["results"]:
         assert result["content"] in text
         assert result["url"] in text
+
+
+def test_long_result_is_cut_but_keeps_its_source(monkeypatch):
+    long_page = "menu " * 1000  # 5,000 characters, like a page full of menus
+    fake = {"results": [{"title": "Shop", "url": "https://example.com/shop",
+                         "content": long_page}]}
+    monkeypatch.setenv("TAVILY_API_KEY", "test-key")
+    monkeypatch.setattr(rag.requests, "post",
+                        lambda *a, **kw: NS(raise_for_status=lambda: None, json=lambda: fake))
+
+    text = rag.web_search("arabica price today")
+
+    assert long_page[:rag.MAX_RESULT_CHARS] in text
+    assert long_page[:rag.MAX_RESULT_CHARS + 1] not in text
+    assert "https://example.com/shop" in text
