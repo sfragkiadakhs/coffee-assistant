@@ -7,36 +7,53 @@ ANSWER_TOKENS = {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 
 
 
 @pytest.fixture
-def search_calls(monkeypatch):
-    # Shared setup: every test that asks for `search_calls` get fresh fakes
-    calls = []
-    replies = [("espresso crema", REWRITE_TOKENS), ("Crema is the foam.", ANSWER_TOKENS)]
-   
+def seen(monkeypatch):
+    # Shared setup: every test that asks for `seen` gets fresh fakes
+    seen = {"searches": [], "answer_prompts": []}
+
     def fake_search(query, num_results=10):
-        calls.append(query)
+        seen["searches"].append(query)
         return []
 
     def fake_llm(prompt, model="gpt-4o-mini"):
-        # 1st call = rewrite, 2nd call = answer, so the test can tell them apart
-        return replies.pop(0)
+        # only the rewrite still uses llm()
+        return "espresso crema", REWRITE_TOKENS
+
+    def fake_answer_with_tools(question, model="gpt-4o-mini"):
+        # the answer now comes from the tool loop, which can search the web
+        seen["answer_prompts"].append(question)
+        return "Crema is the foam. (source: coffee database)", ANSWER_TOKENS
 
     monkeypatch.setattr(rag, "search", fake_search)
     monkeypatch.setattr(rag, "llm", fake_llm)
-    return calls
+    monkeypatch.setattr(rag, "answer_with_tools", fake_answer_with_tools)
+    return seen
 
- 
 
-def test_rewrite_goes_to_search_original_goes_to_prompt(search_calls):
+def test_rewrite_goes_to_search_original_goes_to_prompt(seen):
     result = rag.rag("expreso crma?")
 
-    assert search_calls == ["espresso crema"]
+    assert seen["searches"] == ["espresso crema"]
     assert "expreso crma?" in result["prompt"]
 
 
-def test_tokens_from_both_llm_calls_are_summed(search_calls):
+def test_tokens_from_rewrite_and_answer_are_summed(seen):
     result = rag.rag("anything")
 
-    assert result["prompt_tokens"] == 110 
-    assert result["completion_tokens"] == 55 
+    assert result["prompt_tokens"] == 110
+    assert result["completion_tokens"] == 55
     assert result["total_tokens"] == 165
-    
+
+
+def test_answer_comes_from_the_tool_loop(seen):
+    result = rag.rag("What is crema?")
+
+    assert seen["answer_prompts"] == [result["prompt"]]   # the full prompt went to the loop
+    assert result["answer"] == "Crema is the foam. (source: coffee database)"
+
+
+def test_prompt_allows_the_web_and_asks_for_the_source(seen):
+    prompt = rag.rag("What does arabica cost today?")["prompt"]
+
+    assert "Use only the facts" not in prompt   # the old rule blocked the web
+    assert "source" in prompt.lower()           # the model must say where the answer came from

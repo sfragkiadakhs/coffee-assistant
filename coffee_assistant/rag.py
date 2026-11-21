@@ -18,7 +18,8 @@ def search(query, num_results=10):
 
 prompt_template = """
 You're a coffee assistant. Answer the QUESTION based on the CONTEXT from our coffee database.
-Use only the facts from the CONTEXT when answering the QUESTION.
+Search first in the databse CONTEXT and if you can't answer or the QUESTION needs current data use the web tool.
+The ANSWER should contain the source in (), for example (source: coffee database) or (source: www.website.com)
 Don't substitute a related but different figure (for example a toxic or fatal dose when
 asked about recommended intake).
 
@@ -106,7 +107,7 @@ def rag(query, model="gpt-4o-mini", prompt_template=prompt_template, rewrite=Tru
 
     search_results = search(search_query)
     prompt = build_prompt(query, search_results,prompt_template)
-    answer, answer_tokens = llm(prompt, model=model)
+    answer, answer_tokens = answer_with_tools(prompt, model=model)
     for key in token_stats:
         token_stats[key] += answer_tokens[key]
     openai_cost_rag = calculate_openai_cost(model, token_stats)
