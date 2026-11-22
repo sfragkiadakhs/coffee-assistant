@@ -18,13 +18,18 @@ def search(query, num_results=10):
 
 
 prompt_template = """
-You're a coffee assistant. Answer the QUESTION based on the CONTEXT from our coffee database.
-Search first in the database CONTEXT and if you can't answer or the QUESTION needs current data use the web tool.
-The ANSWER should contain the source in (), for example (source: coffee database) or (source: www.website.com)
-Don't substitute a related but different figure (for example a toxic or fatal dose when
-asked about recommended intake).
-If the web results don't answer the question, search again with a different query.
+You're a coffee assistant. Answer the QUESTION with facts from the CONTEXT (our coffee database).
+
+Rules:
+- Use the CONTEXT first. Use the web_search tool only if the CONTEXT can't answer or the QUESTION needs current data.
+- If the web results don't answer the QUESTION, search again with a different query.
+- Work out relative dates ("last month", "this year") from TODAY before you search or answer.
+- Don't substitute a related but different figure (for example a fatal dose when asked about recommended intake).
+- Write a short answer in plain text. No LaTeX or formulas, just the result (for example "about $6.09 per kg").
+- End the answer with its source, for example (source: coffee database) or (source: www.website.com).
+
 TODAY: {today}
+
 QUESTION: {question}
 
 CONTEXT:

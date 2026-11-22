@@ -308,7 +308,8 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   `feedback` tables, `save_conversation()`/`save_feedback()` write to them.
 - `streamlit_app.py`: Streamlit chat UI. The conversation stays on screen as chat
   bubbles (kept in `st.session_state` for the browser session), and the earlier turns
-  go to `rag()` as history. It shows time and cost per answer, logs the conversation,
+  go to `rag()` as history. Dollar signs in answers are escaped, so prices don't turn
+  into math formulas. It shows time and cost per answer, logs the conversation,
   and shows +1/-1 feedback buttons.
 - **Multi-turn:** the rewrite step gets the last 6 messages (`format_history()`), so a
   follow-up like "How long does it take?" becomes a standalone search question about

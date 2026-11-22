@@ -45,12 +45,15 @@ for col, question in zip(cols, example_questions):
             st.session_state.example = question
             st.rerun()
 
+def show(text):
+    st.markdown(text.replace("$", "\\$"))  # "$" would start a math formula in Streamlit
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.write(message["content"])
+        show(message["content"])
 
 question = st.chat_input("Ask about coffee...") or st.session_state.pop("example", None)
 
@@ -62,7 +65,7 @@ if question:
     with st.chat_message("assistant"):
         with st.spinner("Searching"):
             answer = rag(question, history=st.session_state.messages[:-1])
-        st.write(answer["answer"])
+        show(answer["answer"])
         st.caption(f"⏱️ {answer['response_time']:.2f}s · 💰 ${answer['cost']:.4f}")
 
     st.session_state.messages.append({"role": "assistant", "content": answer["answer"]})
