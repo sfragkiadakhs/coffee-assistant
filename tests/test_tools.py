@@ -83,3 +83,13 @@ def test_tokens_from_every_round_are_summed(seen):
 
     # 2 rounds: tool call (100 + 20) and final answer (150 + 30)
     assert token_stats == {"prompt_tokens": 250, "completion_tokens": 50, "total_tokens": 300}
+
+
+def test_bad_tool_arguments_go_back_to_the_model(monkeypatch):
+    # real run 22.11: the model sent {"query": ..., "query2": ...} and the app crashed
+    monkeypatch.setitem(rag.TOOLS, "web_search", lambda query: "results")
+
+    result = rag.run_tool("web_search", {"query": "arabica price", "query2": "green coffee"})
+
+    assert result.startswith("Error:")
+    assert "query2" in result

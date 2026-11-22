@@ -2,6 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from coffee_assistant import retrieval
 from time import time
+from datetime import date
 import json, os, requests
 
 load_dotenv()
@@ -18,11 +19,12 @@ def search(query, num_results=10):
 
 prompt_template = """
 You're a coffee assistant. Answer the QUESTION based on the CONTEXT from our coffee database.
-Search first in the databse CONTEXT and if you can't answer or the QUESTION needs current data use the web tool.
+Search first in the database CONTEXT and if you can't answer or the QUESTION needs current data use the web tool.
 The ANSWER should contain the source in (), for example (source: coffee database) or (source: www.website.com)
 Don't substitute a related but different figure (for example a toxic or fatal dose when
 asked about recommended intake).
-
+If the web results don't answer the question, search again with a different query.
+TODAY: {today}
 QUESTION: {question}
 
 CONTEXT:
@@ -35,8 +37,13 @@ You rewrite user questions for a search engine over coffee-related Wikipedia art
 Fix spelling mistakes and rephrase the question so it is clear and specific, using the
 terms an encyclopedia article would use. Keep the original meaning. Don't answer it and
 don't add new facts.
+If the QUESTION refers to the CHAT HISTORY (for example "it", "that one", "and for espresso?"),
+turn it into a standalone question that names the topic from the history.
 
 Return only the rewritten question.
+
+CHAT HISTORY:
+{history}
 
 QUESTION: {question}
 """.strip()
@@ -56,7 +63,7 @@ def build_prompt(query, search_results, prompt_template=prompt_template):
     for doc in search_results:
         context = context + entry_template.format(**doc) + "\n\n"
 
-    prompt = prompt_template.format(question=query, context=context).strip()
+    prompt = prompt_template.format(today=date.today().isoformat() ,question=query, context=context).strip()
     return prompt
 
 
@@ -88,12 +95,24 @@ def calculate_openai_cost(model, tokens):
 
     return openai_cost
 
-def rewrite_query(query, model="gpt-4o-mini"):
-    rewritten, token_stats = llm(rewrite_template.format(question=query), model=model)
+MAX_HISTORY = 6  # last 6 messages = 3 question/answer turns: enough context, few tokens
+
+
+def format_history(history):
+    history = history[-MAX_HISTORY:]
+    messages = []
+    
+    for message in history:
+        messages.append(f"{message['role']}: {message['content']}")
+
+    return '\n'.join(messages)
+
+def rewrite_query(query, history=None, model="gpt-4o-mini"):
+    rewritten, token_stats = llm(rewrite_template.format(question=query, history=format_history(history or [])), model=model)
     return rewritten.strip(), token_stats
 
 
-def rag(query, model="gpt-4o-mini", prompt_template=prompt_template, rewrite=True):
+def rag(query, history=None, model="gpt-4o-mini", prompt_template=prompt_template, rewrite=True):
     t0 = time()
 
     # The rewritten query only drives the search (fixes typos like "coffeine" that keyword
@@ -101,7 +120,7 @@ def rag(query, model="gpt-4o-mini", prompt_template=prompt_template, rewrite=Tru
     token_stats = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     search_query = query
     if rewrite:
-        search_query, rewrite_tokens = rewrite_query(query, model=model)
+        search_query, rewrite_tokens = rewrite_query(query, history, model=model)
         for key in token_stats:
             token_stats[key] += rewrite_tokens[key]
 
@@ -134,12 +153,14 @@ WEB_SEARCH_TOOL = {
     "type": "function",
     "function": {
         "name": "web_search",
+        "strict": True,
         "description": "Search the web for coffee facts that are not in the coffee database, "
                        "or that change over time (prices, news).",
         "parameters": {
             "type": "object",
             "properties": {"query": {"type": "string", "description": "The search query"}},
             "required": ["query"],
+            "additionalProperties": False,
         },
     },
 }
@@ -181,8 +202,10 @@ def run_tool(name, args):
     if name not in TOOLS:
         return f"Unknown tool: {name}"
     tool = TOOLS[name]
-    return tool(**args)
-
+    try:
+        return tool(**args)
+    except TypeError as error:
+        return f"Error: {error}. Call {name} again with the right arguments."
 
 def answer_with_tools(question, model="gpt-4o-mini"):
     messages = [{"role": "user", "content": question}]

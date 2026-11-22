@@ -42,31 +42,32 @@ cols = st.columns(len(example_questions))
 for col, question in zip(cols, example_questions):
     with col:
         if st.button(question, key=f"example_{question}", use_container_width=True):
-            st.session_state.user_input = question
+            st.session_state.example = question
             st.rerun()
 
-with st.form("ask_form"):
-    user_input = st.text_input(
-        "Enter your question:",
-        key="user_input",
-        placeholder="e.g. What's the difference between Arabica and Robusta?",
-    )
-    submitted = st.form_submit_button("Ask")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-if submitted:
-    if not user_input:
-        st.warning("Please enter a question.")
-    else:
-        with st.spinner("Processing..."):
-            answer = rag(user_input)
-            st.session_state.answer = answer
-            st.session_state.conversation_id = db.save_conversation(user_input, answer)
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
 
-if "answer" in st.session_state:
-    answer = st.session_state.answer
-    st.success("Completed!")
-    st.write(answer["answer"])
-    st.caption(f"⏱️ {answer['response_time']:.2f}s · 💰 ${answer['cost']:.4f}")
+question = st.chat_input("Ask about coffee...") or st.session_state.pop("example", None)
+
+if question:
+    st.session_state.messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.write(question)
+
+    with st.chat_message("assistant"):
+        with st.spinner("Searching"):
+            answer = rag(question, history=st.session_state.messages[:-1])
+        st.write(answer["answer"])
+        st.caption(f"⏱️ {answer['response_time']:.2f}s · 💰 ${answer['cost']:.4f}")
+
+    st.session_state.messages.append({"role": "assistant", "content": answer["answer"]})
+    st.session_state.conversation_id = db.save_conversation(question, answer)
+
 
 conversation_id = st.session_state.get("conversation_id")
 

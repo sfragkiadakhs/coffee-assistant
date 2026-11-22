@@ -248,6 +248,32 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
 
 ## Troubleshooting
 
+**The model called `web_search` with an argument it doesn't have**
+
+- **Symptom:** in a real run, "What did a kilo of green arabica cost last month?"
+  crashed the app with `web_search() got an unexpected keyword argument 'query2'`.
+- **Root cause:** the model invented a second argument, probably to run two searches
+  at once. `run_tool()` passed the model's arguments straight to the function.
+- **Fix:** two layers. The tool schema is now strict (`"strict": True`,
+  `"additionalProperties": False`), so the API only sends the arguments in the schema.
+  If bad arguments still arrive, `run_tool()` sends the error back to the model as the
+  tool result, so it can call the tool again instead of crashing the app. A test
+  covers the `query2` case.
+- **Lesson:** the model's output is untrusted input. Unit tests with fakes passed, and
+  only the real run found it.
+
+**"Last month" answered for 2023**
+
+- **Symptom:** after the crash fix, the same question was answered with a price from
+  September 2023.
+- **Root cause:** the model has no clock. It only knows its training data (up to 2023)
+  and the text in the prompt.
+- **Fix:** the answer prompt now includes today's date. Checked in a real run: the
+  answer now names October 2026. On the first try the app still showed the old answer, because Streamlit had not
+  reloaded the changed `rag.py`. A restart of the app fixed that.
+- **Lesson:** an assistant that answers time questions needs the current date in its
+  prompt. After changing an imported module, restart Streamlit before testing.
+
 **Local Postgres: `password authentication failed`**
 
 - **Symptom:** the app answered, but saving the conversation failed. The Postgres log
@@ -280,8 +306,14 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   estimated cost (rewrite + answer).
 - `coffee_assistant/db.py`: Postgres logging. `init_db()` creates the `conversations`/
   `feedback` tables, `save_conversation()`/`save_feedback()` write to them.
-- `streamlit_app.py`: Streamlit UI. A question box that calls `rag()`, displays the
-  answer with token usage, logs the conversation, and shows +1/-1 feedback buttons.
+- `streamlit_app.py`: Streamlit chat UI. The conversation stays on screen as chat
+  bubbles (kept in `st.session_state` for the browser session), and the earlier turns
+  go to `rag()` as history. It shows time and cost per answer, logs the conversation,
+  and shows +1/-1 feedback buttons.
+- **Multi-turn:** the rewrite step gets the last 6 messages (`format_history()`), so a
+  follow-up like "How long does it take?" becomes a standalone search question about
+  the topic from the history. The answer prompt also gets today's date, so questions
+  like "last month" are searched for the right month.
 - `tests/`: pytest unit tests for the RRF fusion and vector search in `retrieval.py`,
   and for `rag()` with a fake LLM, fake search and a fake tool loop (the rewritten
   question goes to search, the original to the prompt, the prompt goes to the tool loop
