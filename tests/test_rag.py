@@ -57,3 +57,13 @@ def test_prompt_allows_the_web_and_asks_for_the_source(seen):
 
     assert "Use only the facts" not in prompt   # the old rule blocked the web
     assert "source" in prompt.lower()           # the model must say where the answer came from
+
+
+def test_prompt_keeps_the_bot_on_coffee_and_in_the_users_language(seen):
+    # The 22.11 log: off-topic questions (Harvard, linear regression) went to the web,
+    # Greek questions got English answers. Only a real run proves the model follows this.
+    prompt = rag.rag("Please find me a master's degree in Ulm")["prompt"]
+
+    assert "only answer questions about coffee" in prompt
+    assert "isn't about coffee, don't search the web" in prompt
+    assert "language of the QUESTION" in prompt
