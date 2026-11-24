@@ -66,4 +66,5 @@ def test_prompt_keeps_the_bot_on_coffee_and_in_the_users_language(seen):
 
     assert "only answer questions about coffee" in prompt
     assert "isn't about coffee, don't search the web" in prompt
-    assert "language of the QUESTION" in prompt
+    assert "language the QUESTION is written in" in prompt
+    assert "Coffee words from other languages" in prompt   # "crema" made it answer in Spanish
