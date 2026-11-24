@@ -7,6 +7,11 @@ Capstone project of LLM Zoomcamp 2026 ([certificate](#certificate)).
 97 of 100 test answers rated relevant by an LLM judge.
 
 **Live demo:** [coffee-assist.streamlit.app](https://coffee-assist.streamlit.app/). The first load after a restart takes about 10 seconds.
+Some company networks block the live app, so here it is in action: an answer from the
+coffee database, a current price from web search with its link, a German question answered
+in German, and an off-topic question it declines.
+
+![Coffee Assistant answering three questions](images/demo.gif)
 
 ## Problem
 
@@ -354,6 +359,8 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   base: `coffee.duckdb` (chunks) and `embeddings.npz` (their vectors + chunk IDs).
 - `scripts/build_embeddings.py`: embeds all chunks once and saves `data/embeddings.npz`.
 - `scripts/time_startup.py`: measures how long each startup step takes.
+- `scripts/record_demo.py`: records `images/demo.gif` from the live app with Playwright and
+  ffmpeg (`uv run --with playwright python -m scripts.record_demo`).
 - `requirements.txt`: pip-format dependency list generated from `pyproject.toml`/`uv.lock`
   via `uv export --no-dev --no-hashes --no-emit-project --format requirements-txt -o requirements.txt`,
   for hosts (e.g. Streamlit Community Cloud) that don't install from `uv.lock` directly.
