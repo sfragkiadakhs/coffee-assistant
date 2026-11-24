@@ -3,7 +3,7 @@
 A RAG chatbot that answers coffee questions from Wikipedia articles, with measured retrieval and answer quality.
 Capstone project of LLM Zoomcamp 2026 ([certificate](#certificate)).
 
-**Results:** hybrid search finds the right chunk in 75% of test questions (Hit Rate 0.75 vs. 0.56 keyword-only) ·
+**Results:** hybrid search finds the right chunk in 79% of test questions (Hit Rate 0.79 vs. 0.55 keyword-only) ·
 97 of 100 test answers rated relevant by an LLM judge.
 
 **Live demo:** [coffee-assist.streamlit.app](https://coffee-assist.streamlit.app/). The first load after a restart takes about 10 seconds.
@@ -104,13 +104,15 @@ ground-truth question set, using Hit Rate and MRR (top 10 results):
 
 | Method | Hit Rate | MRR |
 |---|---|---|
-| Keyword (TF-IDF) | 0.556 | 0.338 |
-| Vector (ONNX MiniLM embeddings) | 0.633 | 0.404 |
-| Hybrid (RRF, k=60 default) | 0.751 | 0.391 |
-| **Hybrid (RRF, k=1)** | **0.751** | **0.421** |
+| Keyword (TF-IDF) | 0.551 | 0.335 |
+| Vector (ONNX MiniLM embeddings) | 0.740 | 0.460 |
+| Hybrid (RRF, k=60 default) | 0.786 | 0.416 |
+| **Hybrid (RRF, k=1)** | **0.786** | **0.430** |
 
 Hybrid search merges keyword and vector rankings via Reciprocal Rank Fusion (RRF). It
-wins on Hit Rate outright, and with a tuned `k=1` it also beats vector search on MRR.
+wins on Hit Rate. Vector search wins on MRR, so it ranks the right chunk higher when both
+find it. `rag.py` puts all 10 results into the prompt, so finding the right chunk matters
+more than its position.
 The RRF literature default of `k=60` is tuned for rankings in the thousands and barely
 separates the candidates in a top-10 list (see the notebook for the full explanation). **Hybrid search with `k=1` is used in production**, in
 `coffee_assistant/retrieval.py`'s `hybrid_search()`, called from `rag.py`'s `search()`.
@@ -118,6 +120,12 @@ separates the candidates in a top-10 list (see the notebook for the full explana
 Vector embeddings come from a local ONNX MiniLM model (`coffee_assistant/embedder.py`,
 adapted from the LLM Zoomcamp `02-vector-search` module). It needs no API calls and no
 PyTorch, which keeps the Docker image small.
+
+**Embedder reads 256 tokens, not 128:** the model's `tokenizer.json` cuts every input at
+128 tokens, but a chunk has about 430. So each embedding covered only the first ~600 of
+2000 characters. I measured it, set `MAX_TOKENS = 256` (the model card's limit) in
+`embedder.py` and rebuilt `embeddings.npz`. Vector search went from 0.615 to 0.740 Hit
+Rate, hybrid from 0.732 to 0.786.
 
 ### Query rewriting
 
@@ -130,13 +138,13 @@ Tested on 500 ground-truth questions, as written and with typos added (hybrid se
 
 | Questions | Rewriting | Hit Rate | MRR |
 |---|---|---|---|
-| As written | no | 0.722 | 0.422 |
-| As written | yes | 0.720 | 0.397 |
-| With typos | no | 0.642 | 0.353 |
-| With typos | **yes** | **0.742** | **0.409** |
+| As written | no | 0.808 | 0.456 |
+| As written | yes | 0.786 | 0.432 |
+| With typos | no | 0.718 | 0.386 |
+| With typos | **yes** | **0.788** | **0.441** |
 
-On clean questions rewriting changes almost nothing. With typos it brings search back up
-to clean-question level. Real users make typos, so **rewriting is used in production**.
+On clean questions rewriting lowers the Hit Rate a little (0.808 to 0.786). With typos it
+raises it from 0.718 to 0.788. Real users make typos, so **rewriting is used in production**.
 
 **Best practices:** hybrid search (combining keyword and vector search, evaluated above)
 and query rewriting are both used in production.
@@ -231,7 +239,7 @@ dashboard definition. Import it via Grafana's UI (Dashboards → New → Import)
   planned fallback from the start, so the pipeline and eval work didn't need to
   change when the deadline hit.
 - **Hybrid search + gpt-4o-mini**: hybrid search (RRF) beat keyword-only and
-  vector-only on Hit Rate and MRR (see [Retrieval evaluation](#retrieval-evaluation)),
+  vector-only on Hit Rate (see [Retrieval evaluation](#retrieval-evaluation)),
   and with query rewriting gpt-4o-mini scored 0.98 RELEVANT
   (see [LLM evaluation](#llm-evaluation)). That is good enough that a larger, pricier
   model wasn't worth it.

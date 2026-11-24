@@ -5,6 +5,7 @@ from pathlib import Path
 from coffee_assistant import download_embedder
 
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
+MAX_TOKENS = 256 # the model card's limit, tokenizer.json alone cuts at 128
 
 class Embedder:
     def __init__(self, path=None):
@@ -12,8 +13,9 @@ class Embedder:
 
         if not (path / "tokenizer.json").exists():
             download_embedder.download("Xenova/all-MiniLM-L6-v2", dest=MODELS_DIR)
-        
+ 
         self.tokenizer = Tokenizer.from_file(str(path / "tokenizer.json"))  
+        self.tokenizer.enable_truncation(max_length=MAX_TOKENS)
         
         self.session = ort.InferenceSession(
             str(path / "model.onnx"), providers=["CPUExecutionProvider"]
