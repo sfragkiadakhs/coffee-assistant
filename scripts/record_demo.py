@@ -48,7 +48,6 @@ def record(video_dir):
                 raise RuntimeError(f"input box lost the question: {box.input_value()!r}")
             page.keyboard.press("Enter")
             # the answer is done when its message exists and the run has finished
-            # (only the newest answer keeps its "⏱️" caption, so counting captions fails)
             page.get_by_test_id("stChatMessage").nth(2 * i - 1).wait_for(timeout=90_000)
             page.wait_for_timeout(500)
             running.wait_for(state="hidden", timeout=90_000)

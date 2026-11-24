@@ -48,12 +48,29 @@ for col, question in zip(cols, example_questions):
 def show(text):
     st.markdown(text.replace("$", "\\$"))  # "$" would start a math formula in Streamlit
 
+def save_choice(conversation_id, key):
+    choice = st.session_state[key]  # st.feedback("thumbs"): 1 = up, 0 = down
+    if choice is not None:
+        db.save_feedback(conversation_id, score=1 if choice == 1 else -1)
+
+
+def thumbs(conversation_id):
+    # same key on every rerun, so the chosen thumb stays highlighted
+    # (not disabled after a vote: disabled greys out both thumbs and hides the choice)
+    key = f"feedback_{conversation_id}"
+    st.feedback("thumbs", key=key, on_change=save_choice, args=(conversation_id, key))
+
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         show(message["content"])
+        if "caption" in message:
+            st.caption(message["caption"])
+        if message.get("conversation_id") is not None:
+            thumbs(message["conversation_id"])
 
 question = st.chat_input("Ask about coffee...") or st.session_state.pop("example", None)
 
@@ -66,32 +83,10 @@ if question:
         with st.spinner("Searching"):
             answer = rag(question, history=st.session_state.messages[:-1])
         show(answer["answer"])
-        st.caption(f"⏱️ {answer['response_time']:.2f}s · 💰 ${answer['cost']:.4f}")
+        caption = f"⏱️ {answer['response_time']:.2f}s · 💰 ${answer['cost']:.4f}"
+        st.caption(caption)
+        conversation_id = db.save_conversation(question, answer)
+        thumbs(conversation_id)
 
-    st.session_state.messages.append({"role": "assistant", "content": answer["answer"]})
-    st.session_state.conversation_id = db.save_conversation(question, answer)
-
-
-conversation_id = st.session_state.get("conversation_id")
-
-if conversation_id is not None:
-    feedback_key = f"feedback_given_{conversation_id}"
-    given = st.session_state.get(feedback_key)
-
-    if given is None:
-        st.write("Was this helpful?")
-        col1, col2, _ = st.columns([1, 1, 6])
-
-        with col1:
-            if st.button("👍", key=f"feedback_up_{conversation_id}"):
-                db.save_feedback(conversation_id, score=1)
-                st.session_state[feedback_key] = "up"
-                st.rerun()
-
-        with col2:
-            if st.button("👎", key=f"feedback_down_{conversation_id}"):
-                db.save_feedback(conversation_id, score=-1)
-                st.session_state[feedback_key] = "down"
-                st.rerun()
-    else:
-        st.caption(f"Thanks for the feedback! {'👍' if given == 'up' else '👎'}")
+    st.session_state.messages.append({"role": "assistant", "content": answer["answer"],
+                                      "caption": caption, "conversation_id": conversation_id})

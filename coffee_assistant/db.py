@@ -97,6 +97,8 @@ def save_feedback(conversation_id, score, timestamp=None):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
+            # a changed vote replaces the old one, so each answer counts once in Grafana
+            cur.execute("DELETE FROM feedback WHERE conversation_id = %s", (conversation_id,))
             cur.execute(
                 "INSERT INTO feedback (conversation_id, score, timestamp) VALUES (%s, %s, %s)",
                 (conversation_id, score, timestamp),
