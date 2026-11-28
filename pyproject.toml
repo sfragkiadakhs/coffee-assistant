@@ -8,6 +8,7 @@ dependencies = [
     "dlt[duckdb]>=1.30.0",
     "gitsource>=0.0.5",
     "jupyter>=1.1.1",
+    "mcp[cli]>=2.3.0",
     "minsearch>=0.2.0",
     "numpy>=2.5.2",
     "onnxruntime>=1.29.0",
